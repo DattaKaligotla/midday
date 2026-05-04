@@ -39,7 +39,22 @@ const config = {
     "@midday/tailwind",
     "@midday/invoice",
     "@midday/api",
+    "@faraday/ui-agent",
   ],
+  // ⚠️ FARADAY DEMO MODE — force React / floating-ui / zustand to resolve to
+  // the dashboard's copies so the symlinked @faraday/ui-agent package doesn't
+  // load duplicates from its own node_modules (Midday is on React 19).
+  turbopack: {
+    resolveAlias: {
+      react: "../../node_modules/react",
+      "react-dom": "../../node_modules/react-dom",
+      "react/jsx-runtime": "../../node_modules/react/jsx-runtime.js",
+      "react/jsx-dev-runtime":
+        "../../node_modules/react/jsx-dev-runtime.js",
+      zustand: "../../node_modules/zustand",
+      "@floating-ui/react": "../../node_modules/@floating-ui/react",
+    },
+  },
   serverExternalPackages: ["@react-pdf/renderer", "pino"],
   typescript: {
     ignoreBuildErrors: true,

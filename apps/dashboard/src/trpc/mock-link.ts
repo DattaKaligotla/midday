@@ -217,8 +217,7 @@ function mock(path: string, _input: unknown): unknown {
         result,
       };
     }
-    case "reports.expense":
-    case "reports.spending": {
+    case "reports.expense": {
       const result = Array.from({ length: 12 }, (_, i) => {
         const date = new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10);
         const current = 22000 + Math.round(Math.sin(i / 3) * 3500) + i * 250;
@@ -245,6 +244,15 @@ function mock(path: string, _input: unknown): unknown {
         result,
       };
     }
+    // CategoryExpensesCard expects a flat array, not a structured envelope.
+    case "reports.spending":
+      return [
+        { name: "Subscriptions", slug: "subscriptions", color: "#3B82F6", amount: 6800, currency: "USD" },
+        { name: "Infrastructure", slug: "infrastructure", color: "#10B981", amount: 4900, currency: "USD" },
+        { name: "Salary", slug: "salary", color: "#8B5CF6", amount: 12000, currency: "USD" },
+        { name: "Office", slug: "office", color: "#F59E0B", amount: 1450, currency: "USD" },
+        { name: "Travel", slug: "travel", color: "#EF4444", amount: 2200, currency: "USD" },
+      ];
     case "reports.profit":
       return Array.from({ length: 12 }, (_, i) => ({
         date: new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10),

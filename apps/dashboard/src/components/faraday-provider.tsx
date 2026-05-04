@@ -5,6 +5,7 @@ import {
   UIAgentLauncher,
   UIAgentProvider,
 } from "@faraday/ui-agent";
+import "@faraday/ui-agent/style.css";
 import type { ReactNode } from "react";
 
 type FaradayProviderProps = {
