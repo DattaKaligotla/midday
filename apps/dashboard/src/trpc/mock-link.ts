@@ -191,6 +191,91 @@ function mock(path: string, _input: unknown): unknown {
           currency: "USD",
         })),
       };
+    // Card-level reports — each card expects an array of { date, value, currency }.
+    case "reports.burnRate":
+      return Array.from({ length: 12 }, (_, i) => ({
+        date: new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10),
+        value: 28000 + Math.round(Math.sin(i / 2) * 4000) + i * 350,
+        currency: "USD",
+      }));
+    case "reports.revenue": {
+      const result = Array.from({ length: 12 }, (_, i) => {
+        const date = new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10);
+        const current = 38000 + Math.round(Math.cos(i / 2) * 5500) + i * 600;
+        const previous = current - 4500 - Math.round(Math.sin(i / 3) * 1500);
+        return {
+          date,
+          current: { date, value: current, currency: "USD" },
+          previous: { date, value: previous, currency: "USD" },
+        };
+      });
+      const currentTotal = result.reduce((s, r) => s + r.current.value, 0);
+      const prevTotal = result.reduce((s, r) => s + r.previous.value, 0);
+      return {
+        summary: { currentTotal, prevTotal, averageRevenue: Math.round(currentTotal / 12), currency: "USD" },
+        meta: { type: "amount", currency: "USD" },
+        result,
+      };
+    }
+    case "reports.expense":
+    case "reports.spending": {
+      const result = Array.from({ length: 12 }, (_, i) => {
+        const date = new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10);
+        const current = 22000 + Math.round(Math.sin(i / 3) * 3500) + i * 250;
+        const recurring = Math.round(current * 0.65);
+        return {
+          date,
+          value: current,
+          recurring,
+          total: current,
+          currency: "USD",
+          current: { date, value: current, currency: "USD" },
+          previous: { date, value: current - 1800, currency: "USD" },
+        };
+      });
+      const currentTotal = result.reduce((s, r) => s + r.value, 0);
+      return {
+        summary: {
+          currentTotal,
+          prevTotal: currentTotal - 12000,
+          averageExpense: Math.round(currentTotal / 12),
+          currency: "USD",
+        },
+        meta: { type: "amount", currency: "USD" },
+        result,
+      };
+    }
+    case "reports.profit":
+      return Array.from({ length: 12 }, (_, i) => ({
+        date: new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10),
+        value: 9000 + Math.round(Math.cos(i / 4) * 2500) + i * 200,
+        currency: "USD",
+      }));
+    case "reports.runway":
+      return Array.from({ length: 12 }, (_, i) => ({
+        date: new Date(Date.now() - (11 - i) * 30 * DAY_MS).toISOString().slice(0, 10),
+        value: Math.max(2, 18 - i),
+        currency: "USD",
+      }));
+    case "reports.revenueForecast":
+      return {
+        forecast: Array.from({ length: 6 }, (_, i) => ({
+          date: new Date(Date.now() + (i + 1) * 30 * DAY_MS).toISOString().slice(0, 10),
+          value: 42000 + i * 1500,
+          currency: "USD",
+        })),
+        currency: "USD",
+      };
+    case "reports.getAccountBalances":
+      return [
+        { date: isoDays(60), balance: 105000, currency: "USD" },
+        { date: isoDays(45), balance: 112400, currency: "USD" },
+        { date: isoDays(30), balance: 118200, currency: "USD" },
+        { date: isoDays(15), balance: 121800, currency: "USD" },
+        { date: isoDays(0), balance: 124500, currency: "USD" },
+      ];
+    case "reports.taxSummary":
+      return { totalTax: 4250, currency: "USD", periods: [] };
     case "overview.summary":
       return {
         openInvoices: { count: 4, totalAmount: 12450, currency: "USD" },
@@ -224,7 +309,50 @@ function mock(path: string, _input: unknown): unknown {
     case "inbox.list":
       return { data: [], nextCursor: null };
     case "bankAccounts.list":
-      return [{ id: "demo-acct", name: "Operating", currency: "USD", balance: 124500 }];
+    case "bankAccounts.get":
+      return [
+        {
+          id: "demo-acct",
+          name: "Operating",
+          currency: "USD",
+          balance: 124500,
+          enabled: true,
+          type: "depository",
+          accountReference: null,
+        },
+      ];
+    case "bankConnections.get":
+    case "bankConnections.list":
+      return [
+        {
+          id: "demo-conn-1",
+          name: "Demo Bank",
+          logoUrl: null,
+          provider: "plaid",
+          status: "connected",
+          lastAccessed: NOW,
+          expiresAt: null,
+          errorRetries: 0,
+          errorDetails: null,
+          accounts: [
+            {
+              id: "demo-acct",
+              name: "Operating",
+              currency: "USD",
+              balance: 124500,
+              enabled: true,
+              type: "depository",
+            },
+          ],
+        },
+      ];
+    case "tags.get":
+    case "tags.list":
+      return [
+        { id: "tag-1", name: "recurring", color: "#3B82F6" },
+        { id: "tag-2", name: "tax-deductible", color: "#10B981" },
+        { id: "tag-3", name: "needs-review", color: "#F59E0B" },
+      ];
     case "trackerEntries.list":
       return { data: [], nextCursor: null };
     case "vault.list":
