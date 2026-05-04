@@ -1,61 +1,19 @@
-import { redirect } from "next/navigation";
 import { ExportStatus } from "@/components/export-status";
 import { GlobalTimerProvider } from "@/components/global-timer-provider";
 import { Header } from "@/components/header";
 import { GlobalSheetsProvider } from "@/components/sheets/global-sheets-provider";
 import { Sidebar } from "@/components/sidebar";
 import { TimezoneDetector } from "@/components/timezone-detector";
-import { TrialGuard } from "@/components/trial-guard";
-import {
-  batchPrefetch,
-  getQueryClient,
-  HydrateClient,
-  trpc,
-} from "@/trpc/server";
+import { HydrateClient } from "@/trpc/server";
 
+// ⚠️ FARADAY DEMO MODE — original tRPC user fetch + onboarding/login redirects
+// stripped so the sidebar layout renders without a real API. Restore before
+// any non-local deployment.
 export default async function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const queryClient = getQueryClient();
-
-  // NOTE: These are used in the global sheets
-  batchPrefetch([
-    trpc.team.current.queryOptions(),
-    trpc.invoice.defaultSettings.queryOptions(),
-    trpc.search.global.queryOptions({ searchTerm: "" }),
-  ]);
-
-  // Fetch the user – .catch → redirect so a transient API failure
-  // (timeout, 5xx, expired session, etc.) doesn't crash the entire
-  // layout and blank the page.
-  const user = await queryClient
-    .fetchQuery(trpc.user.me.queryOptions())
-    .catch(() => redirect("/login"));
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  if (!user.fullName || !user.teamId) {
-    redirect("/onboarding");
-  }
-
-  // New teams created after this date must complete onboarding (incl. plan
-  // selection) before accessing the dashboard. Existing teams are unaffected.
-  // Teams with canceledAt set have already been through onboarding and had a
-  // subscription -- they should see the upgrade page, not the onboarding flow.
-  const ONBOARDING_ENFORCEMENT_DATE = "2026-03-24T00:00:00.000Z";
-  if (
-    user.team?.plan === "trial" &&
-    user.team?.createdAt &&
-    !user.team?.canceledAt &&
-    new Date(user.team.createdAt) >= new Date(ONBOARDING_ENFORCEMENT_DATE)
-  ) {
-    redirect("/onboarding?s=start-trial");
-  }
-
   return (
     <HydrateClient>
       <div className="relative">
@@ -63,9 +21,7 @@ export default async function Layout({
 
         <div className="md:ml-[70px] pb-4">
           <Header />
-          <TrialGuard plan={user.team?.plan} createdAt={user.team?.createdAt}>
-            <div className="px-4 md:px-8">{children}</div>
-          </TrialGuard>
+          <div className="px-4 md:px-8">{children}</div>
         </div>
 
         <ExportStatus />
