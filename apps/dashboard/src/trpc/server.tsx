@@ -2,74 +2,32 @@ import "server-only";
 
 import type { AppRouter } from "@midday/api/trpc/routers/_app";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { createTRPCClient, httpLink, loggerLink } from "@trpc/client";
+import { createTRPCClient, loggerLink } from "@trpc/client";
 import {
   createTRPCOptionsProxy,
   type TRPCQueryOptions,
 } from "@trpc/tanstack-react-query";
 import { cache } from "react";
-import superjson from "superjson";
+import { makeMockLink } from "./mock-link";
 import { makeQueryClient } from "./query-client";
-import {
-  buildTRPCRequestHeaders,
-  getForcePrimaryFromCookies,
-  getServerRequestContext,
-} from "./request-context";
 
 // IMPORTANT: Create a stable getter for the query client that
 //            will return the same client during the same request.
 export const getQueryClient = cache(makeQueryClient);
 
-// Server-side: prefer Railway private networking (skips DNS + TLS + Cloudflare)
-// Falls back to public URL for local dev / non-Railway environments
-const API_BASE_URL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL;
-
-const SSR_FETCH_TIMEOUT_MS = 8_000;
-
-function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
-  const timeoutSignal = AbortSignal.timeout(SSR_FETCH_TIMEOUT_MS);
-  const signal = init?.signal
-    ? AbortSignal.any([init.signal, timeoutSignal])
-    : timeoutSignal;
-
-  const headers = new Headers(init?.headers);
-
-  return fetch(input, { ...init, signal, headers });
-}
-
+// ⚠️ FARADAY DEMO MODE — original httpLink to `@midday/api` replaced with a
+// local mock link so SSR doesn't depend on a running API. Restore the network
+// link before any non-local deployment.
 export const trpc = createTRPCOptionsProxy<AppRouter>({
   queryClient: getQueryClient,
   client: createTRPCClient({
     links: [
-      httpLink({
-        url: `${API_BASE_URL}/trpc`,
-        transformer: superjson,
-        fetch: fetchWithTimeout,
-        async headers() {
-          const requestContext = await getServerRequestContext();
-
-          // Pass force-primary cookie as header to API for replication lag handling
-          const forcePrimary = getForcePrimaryFromCookies(
-            requestContext.cookieStore,
-          );
-
-          return buildTRPCRequestHeaders({
-            session: requestContext.session,
-            forcePrimary,
-            location: requestContext.location,
-            traceHeaders: requestContext.traceHeaders,
-          });
-        },
-      }),
       loggerLink({
         enabled: (opts) =>
           process.env.NODE_ENV === "development" ||
           (opts.direction === "down" && opts.result instanceof Error),
       }),
+      makeMockLink(),
     ],
   }),
 });

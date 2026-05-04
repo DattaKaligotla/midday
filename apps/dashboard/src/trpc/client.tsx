@@ -3,25 +3,11 @@
 import type { AppRouter } from "@midday/api/trpc/routers/_app";
 import type { QueryClient } from "@tanstack/react-query";
 import { isServer, QueryClientProvider } from "@tanstack/react-query";
-import {
-  createTRPCClient,
-  httpBatchStreamLink,
-  loggerLink,
-} from "@trpc/client";
+import { createTRPCClient, loggerLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
-import superjson from "superjson";
-import { Cookies } from "@/utils/constants";
-import { getAccessToken } from "@/utils/session";
+import { makeMockLink } from "./mock-link";
 import { makeQueryClient } from "./query-client";
-
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(";").shift() || null;
-  return null;
-}
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
@@ -44,34 +30,18 @@ export function TRPCReactProvider(
 ) {
   const queryClient = getQueryClient();
 
+  // ⚠️ FARADAY DEMO MODE — original httpBatchStreamLink replaced with a mock
+  // link that resolves every query/mutation locally. Restore the network link
+  // before any non-local deployment.
   const [trpcClient] = useState(() =>
     createTRPCClient<AppRouter>({
       links: [
-        httpBatchStreamLink({
-          url: `${process.env.NEXT_PUBLIC_API_URL}/trpc`,
-          transformer: superjson,
-          async headers() {
-            const accessToken = await getAccessToken();
-
-            const headers: Record<string, string> = {};
-
-            if (accessToken) {
-              headers.Authorization = `Bearer ${accessToken}`;
-            }
-
-            const forcePrimary = getCookie(Cookies.ForcePrimary);
-            if (forcePrimary === "true") {
-              headers["x-force-primary"] = "true";
-            }
-
-            return headers;
-          },
-        }),
         loggerLink({
           enabled: (opts) =>
             process.env.NODE_ENV === "development" ||
             (opts.direction === "down" && opts.result instanceof Error),
         }),
+        makeMockLink(),
       ],
     }),
   );
