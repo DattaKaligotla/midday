@@ -311,7 +311,10 @@ export function WelcomeGreeting() {
   const firstName = user?.fullName?.split(" ")[0];
 
   return (
-    <h1 className="text-[38px] font-serif leading-tight text-center">
+    // SSR computes the greeting against the server clock; client recomputes
+    // against the user's timezone — those frequently disagree at hour boundaries.
+    // The mismatch is one render tick and visually identical, so suppress.
+    <h1 className="text-[38px] font-serif leading-tight text-center" suppressHydrationWarning>
       {greeting}
       {firstName ? (
         <>
