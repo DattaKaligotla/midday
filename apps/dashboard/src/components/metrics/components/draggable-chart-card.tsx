@@ -1,6 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+import { FaradayInjectionSlot, useModifiable } from "@faraday/ui-agent";
 import { useCallback, useRef } from "react";
 import type { ColSpan } from "../utils/chart-types";
 
@@ -35,6 +36,14 @@ export function DraggableChartCard({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     disabled: !isEditing,
+  });
+
+  // Register every chart card with Faraday so the agent can target them by id
+  // (e.g. "monthlyRevenue", "burnRate", "expenses"). type=container lets the
+  // agent insertComponent / injectHTML inside the card too.
+  const { style: agentStyle, visible: agentVisible } = useModifiable(id, {
+    type: "container",
+    tag: "div",
   });
 
   const startResize = useCallback(
@@ -90,31 +99,41 @@ export function DraggableChartCard({
     [setNodeRef],
   );
 
-  return (
-    <div
-      id={id}
-      ref={composedRef}
-      className={`relative transition-opacity duration-150 scroll-mt-24 ${isDragging ? "opacity-30" : ""} ${isEditing ? "cursor-grab active:cursor-grabbing" : ""}`}
-      {...(isEditing ? { ...attributes, ...listeners } : {})}
-    >
-      {children}
+  if (!agentVisible) return null;
 
-      {isEditing && (
-        <>
-          <div
-            className="absolute inset-y-0 left-0 w-4 z-20 cursor-col-resize group/resize-l"
-            onPointerDown={(e) => startResize(e, "left")}
-          >
-            <div className="absolute top-1/2 -translate-y-1/2 left-0.5 w-1 h-8 rounded-full bg-border opacity-60 group-hover/resize-l:opacity-100 transition-opacity" />
-          </div>
-          <div
-            className="absolute inset-y-0 right-0 w-4 z-20 cursor-col-resize group/resize-r"
-            onPointerDown={(e) => startResize(e, "right")}
-          >
-            <div className="absolute top-1/2 -translate-y-1/2 right-0.5 w-1 h-8 rounded-full bg-border opacity-60 group-hover/resize-r:opacity-100 transition-opacity" />
-          </div>
-        </>
-      )}
-    </div>
+  return (
+    <>
+      <FaradayInjectionSlot targetId={id} position="before" />
+      <div
+        id={id}
+        ref={composedRef}
+        className={`relative transition-opacity duration-150 scroll-mt-24 ${isDragging ? "opacity-30" : ""} ${isEditing ? "cursor-grab active:cursor-grabbing" : ""}`}
+        style={agentStyle}
+        {...(isEditing ? { ...attributes, ...listeners } : {})}
+      >
+        <FaradayInjectionSlot targetId={id} position="inside-start" />
+        {children}
+
+        {isEditing && (
+          <>
+            <div
+              className="absolute inset-y-0 left-0 w-4 z-20 cursor-col-resize group/resize-l"
+              onPointerDown={(e) => startResize(e, "left")}
+            >
+              <div className="absolute top-1/2 -translate-y-1/2 left-0.5 w-1 h-8 rounded-full bg-border opacity-60 group-hover/resize-l:opacity-100 transition-opacity" />
+            </div>
+            <div
+              className="absolute inset-y-0 right-0 w-4 z-20 cursor-col-resize group/resize-r"
+              onPointerDown={(e) => startResize(e, "right")}
+            >
+              <div className="absolute top-1/2 -translate-y-1/2 right-0.5 w-1 h-8 rounded-full bg-border opacity-60 group-hover/resize-r:opacity-100 transition-opacity" />
+            </div>
+          </>
+        )}
+
+        <FaradayInjectionSlot targetId={id} position="inside-end" />
+      </div>
+      <FaradayInjectionSlot targetId={id} position="after" />
+    </>
   );
 }

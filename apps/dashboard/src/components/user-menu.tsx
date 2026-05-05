@@ -44,7 +44,10 @@ export function UserMenu({ onlySignOut }: Props) {
             />
           )}
           <AvatarFallback>
-            <span className="text-xs">
+            {/* The mocked user resolves client-side, so SSR renders empty and
+                hydration sees the initial. Suppress the warning — visually
+                identical, just a one-tick mismatch. */}
+            <span className="text-xs" suppressHydrationWarning>
               {user?.fullName?.charAt(0)?.toUpperCase()}
             </span>
           </AvatarFallback>
